@@ -1,28 +1,33 @@
 ﻿<!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="h-full">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - MafiaGame</title>
 
-    <!-- Tailwind via CDN -->
+    <!-- Tailwind via CDN, with darkMode based on OS/browser preference -->
+    <script>
+        tailwind.config = {
+          darkMode: 'media',
+          theme: {
+            extend: {}
+          }
+        }
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
 
-    <!-- Your custom favicon (place favicon.ico in wwwroot/) -->
     <link rel="icon" href="~/favicon.ico" type="image/x-icon" />
 </head>
-<body class="bg-gray-100 text-gray-800">
-    <div class="min-h-screen flex flex-col">
-        <header class="bg-indigo-600 text-white p-4 shadow">
-            <h1 class="text-2xl font-semibold">Mafia Game</h1>
-        </header>
-        <main class="flex-grow container mx-auto p-6">
-            @RenderBody()
-        </main>
-        <footer class="bg-gray-200 text-center p-4">
-            © 2025 MafiaGame
-        </footer>
-    </div>
+<body class="min-h-screen flex flex-col bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200">
+    <header class="bg-indigo-600 text-white p-4 shadow dark:bg-indigo-800">
+        <h1 class="text-2xl font-semibold">Mafia Game</h1>
+    </header>
+    <main class="flex-grow container mx-auto p-6">
+        @RenderBody()
+    </main>
+    <footer class="bg-gray-200 text-center p-4 dark:bg-gray-800 dark:text-gray-400">
+        © 2025 MafiaGame
+    </footer>
 
     @RenderSection("Scripts", required: false)
 </body>

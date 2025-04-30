@@ -1,22 +1,27 @@
 ﻿@page
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
 
-<div class="max-w-md mx-auto bg-white rounded-xl shadow-md overflow-hidden p-6">
-    <h2 class="text-xl font-bold mb-4">Join Mafia Game</h2>
+<div class="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden p-6">
+    <h2 class="text-xl font-bold mb-4 dark:text-gray-100">Join Mafia Game</h2>
 
     <div class="space-y-4">
         <input id="name"
                type="text"
                placeholder="Your name"
-               class="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+               class="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-400 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400" />
 
         <button id="join"
                 class="w-full bg-indigo-600 text-white py-2 rounded hover:bg-indigo-700 transition">
             Connect
         </button>
 
-        <div id="status" class="text-green-600 font-medium"></div>
-        <div id="role" class="text-lg font-semibold mt-2"></div>
+        <div id="status" class="text-green-600 font-medium dark:text-green-400"></div>
+
+        <!-- role container: text + image -->
+        <div id="role"
+             class="mt-4 text-center space-y-2 dark:text-gray-100">
+            <!-- JS will inject: <img> + <div>Your role is…</div> -->
+        </div>
     </div>
 </div>
 
@@ -28,16 +33,28 @@
           .build();
 
         conn.on("RoleAssigned", role => {
-          document.getElementById("role").textContent =
-            "Your role is: " + role;
+          const container = document.getElementById("role");
+          container.innerHTML = ''; // clear
+          // Normalize key for filename
+          const key = role.toLowerCase();
+          // Create image element
+          const img = document.createElement("img");
+          img.src = `/images/roles/${key}.png`;
+          img.alt = role;
+          img.className = "mx-auto w-32 h-32 object-contain";
+          // Create text
+          const txt = document.createElement("div");
+          txt.textContent = `Your role is: ${role}`;
+          txt.className = "text-lg font-semibold";
+          // Append in order
+          container.appendChild(img);
+          container.appendChild(txt);
         });
 
         document.getElementById("join")
           .addEventListener("click", async () => {
             const name = document.getElementById("name").value.trim();
-            if (!name) {
-              return alert("Please enter a name");
-            }
+            if (!name) return alert("Please enter a name");
             try {
               await conn.invoke("Join", name);
               document.getElementById("join").disabled = true;
@@ -45,7 +62,7 @@
                 "✅ You’re in! Waiting for GM to deal roles…";
             } catch (err) {
               console.error(err.toString());
-              alert("Could not connect—check the console for details.");
+              alert("Could not connect—check console.");
             }
           });
 
