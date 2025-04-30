@@ -81,18 +81,31 @@
             .withUrl("/gamehub")
             .build();
 
-        // Update player list
+        // Update player list with colored roles
         conn.on("PlayersUpdated", players => {
             const ul = document.getElementById("players");
             ul.innerHTML = "";
+            const colorMap = {
+                mafia:      'text-red-600 dark:text-red-400',
+                sheriff:    'text-green-600 dark:text-green-400',
+                doctor:     'text-blue-600 dark:text-blue-400',
+                putana:     'text-pink-600 dark:text-pink-400',
+                maniac:     'text-purple-600 dark:text-purple-400',
+                immortal:   'text-gray-600 dark:text-gray-400',
+                villager:   'text-gray-50 dark:text-white'
+            };
+
             players.forEach(p => {
                 const li = document.createElement("li");
                 li.className = "p-2 flex justify-between";
                 const name = p.name || "Unknown";
-                const role = p.role || "…waiting…";
+                const roleKey = (p.role || "").toLowerCase();
+                const displayRole = p.role || "…waiting…";
+                const colorClass = colorMap[roleKey] || 'text-gray-600 dark:text-gray-400';
+
                 li.innerHTML = `
                     <span class="font-medium dark:text-gray-100">${name}</span>
-                    <span class="italic text-gray-600 dark:text-gray-400">${role}</span>
+                    <span class="italic ${colorClass}">${displayRole}</span>
                 `;
                 ul.appendChild(li);
             });
@@ -102,7 +115,7 @@
         conn.on("RoleConfigsUpdated", configs => {
             configs.forEach(c => {
                 const key = c.Name.toLowerCase();
-                const cb = document.getElementById(`role-${key}`);
+                const cb  = document.getElementById(`role-${key}`);
                 if (cb) cb.checked = c.Enabled;
                 const num = document.getElementById(`role-${key}-count`);
                 if (num) num.value = c.Count;
@@ -118,9 +131,9 @@
         document.getElementById("update-roles").addEventListener("click", () => {
             const roleNames = ["Mafia", "Sheriff", "Doctor", "Putana", "Maniac", "Immortal"];
             const configs = roleNames.map(name => {
-                const key = name.toLowerCase();
+                const key     = name.toLowerCase();
                 const enabled = document.getElementById(`role-${key}`).checked;
-                const count = key === "mafia"
+                const count   = key === "mafia"
                     ? parseInt(document.getElementById(`role-${key}-count`).value) || 1
                     : 1;
                 return { Name: name, Enabled: enabled, Count: count };
