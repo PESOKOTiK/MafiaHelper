@@ -1,0 +1,146 @@
+﻿@page
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+
+<div class="max-w-2xl mx-auto bg-white rounded-xl shadow-md overflow-hidden p-6">
+    <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-bold">Game Master Dashboard</h2>
+        <div class="space-x-2">
+            <button id="settings"
+                    class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 transition">
+                Settings
+            </button>
+            <button id="deal"
+                    class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition">
+                Deal Roles
+            </button>
+        </div>
+    </div>
+
+    <!-- Role Configuration Panel (hidden by default) -->
+    <div id="role-config" class="mb-6 bg-white p-4 rounded shadow hidden">
+        <h3 class="font-bold mb-2">Role Configuration</h3>
+
+        <!-- Mafia checkbox + count -->
+        <div class="flex items-center space-x-2 mb-2">
+            <input type="checkbox" id="role-mafia" class="h-4 w-4" />
+            <label for="role-mafia" class="flex-1">Mafia</label>
+            <input type="number"
+                   id="role-mafia-count"
+                   min="1"
+                   class="w-16 px-2 py-1 border rounded"
+                   value="1" />
+        </div>
+
+        <!-- Sheriff -->
+        <div class="flex items-center space-x-2 mb-2">
+            <input type="checkbox" id="role-sheriff" class="h-4 w-4" />
+            <label for="role-sheriff" class="flex-1">Sheriff</label>
+        </div>
+
+        <!-- Doctor -->
+        <div class="flex items-center space-x-2 mb-2">
+            <input type="checkbox" id="role-doctor" class="h-4 w-4" />
+            <label for="role-doctor" class="flex-1">Doctor</label>
+        </div>
+
+        <!-- Putana -->
+        <div class="flex items-center space-x-2 mb-2">
+            <input type="checkbox" id="role-putana" class="h-4 w-4" />
+            <label for="role-putana" class="flex-1">Putana</label>
+        </div>
+
+        <!-- Maniac -->
+        <div class="flex items-center space-x-2 mb-2">
+            <input type="checkbox" id="role-maniac" class="h-4 w-4" />
+            <label for="role-maniac" class="flex-1">Maniac</label>
+        </div>
+
+        <!-- Immortal -->
+        <div class="flex items-center space-x-2 mb-2">
+            <input type="checkbox" id="role-immortal" class="h-4 w-4" />
+            <label for="role-immortal" class="flex-1">Immortal</label>
+        </div>
+
+        <button id="update-roles"
+                class="mt-2 bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 transition">
+            Update Roles
+        </button>
+        <div id="roles-status" class="text-green-600 mt-2"></div>
+    </div>
+
+    <!-- Player list -->
+    <ul id="players" class="divide-y divide-gray-200">
+        <!-- JS will inject <li> entries here -->
+    </ul>
+</div>
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.0/signalr.min.js"></script>
+    <script>
+        const conn = new signalR.HubConnectionBuilder()
+            .withUrl("/gamehub")
+            .build();
+
+        // Update player list
+        conn.on("PlayersUpdated", players => {
+            const ul = document.getElementById("players");
+            ul.innerHTML = "";
+            players.forEach(p => {
+                const li = document.createElement("li");
+                li.className = "p-2 flex justify-between";
+                const name = p.name || "Unknown";
+                const role = p.role || "…waiting…";
+                li.innerHTML = `
+                    <span class="font-medium">${name}</span>
+                    <span class="italic text-gray-600">${role}</span>
+                `;
+                ul.appendChild(li);
+            });
+        });
+
+        // Sync role configs into panel
+        conn.on("RoleConfigsUpdated", configs => {
+            configs.forEach(c => {
+                const key = c.Name.toLowerCase();
+                const cb = document.getElementById(`role-${key}`);
+                if (cb) cb.checked = c.Enabled;
+                const num = document.getElementById(`role-${key}-count`);
+                if (num) num.value = c.Count;
+            });
+        });
+
+        // Show config panel
+        document.getElementById("settings").addEventListener("click", () => {
+            document.getElementById("role-config").classList.remove("hidden");
+        });
+
+        // Update roles and hide panel
+        document.getElementById("update-roles").addEventListener("click", () => {
+            const roleNames = ["Mafia", "Sheriff", "Doctor", "Putana", "Maniac", "Immortal"];
+            const configs = roleNames.map(name => {
+                const key = name.toLowerCase();
+                const enabled = document.getElementById(`role-${key}`).checked;
+                const count = key === "mafia"
+                    ? parseInt(document.getElementById(`role-${key}-count`).value) || 1
+                    : 1;
+                return { Name: name, Enabled: enabled, Count: count };
+            });
+            conn.invoke("UpdateRoleConfigs", configs)
+                .then(() => {
+                    document.getElementById("role-config").classList.add("hidden");
+                    const status = document.getElementById("roles-status");
+                    status.textContent = "Roles updated!";
+                    setTimeout(() => status.textContent = "", 2500);
+                })
+                .catch(err => console.error(err.toString()));
+        });
+
+        // Deal roles
+        document.getElementById("deal").addEventListener("click", () => conn.invoke("DealRoles"));
+
+        // Start connection and register GM
+        conn.start()
+            .then(() => conn.invoke("RegisterGM"))
+            .catch(err => console.error(err.toString()));
+    </script>
+}
