@@ -51,7 +51,7 @@ namespace MafiaHelper.Services
             }
             // Fill remaining slots with Villagers
             while (roles.Count < _players.Count)
-                roles.Add("Villager");
+                roles.Add("Citizen");
 
             // Shuffle
             var rng = new Random();
