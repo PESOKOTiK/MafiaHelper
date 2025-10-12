@@ -17,10 +17,21 @@
 
         <div id="status" class="text-green-600 font-medium dark:text-green-400"></div>
 
-        <!-- role container: text + image -->
-        <div id="role"
-             class="mt-4 text-center space-y-2 dark:text-gray-100">
-            <!-- JS will inject: <img> + <div>Your role is…</div> -->
+        <!-- Role display -->
+        <div id="role" class="mt-4 text-center space-y-2 dark:text-gray-100"></div>
+
+        <!-- Voting window -->
+        <div id="voting-window" class="hidden mt-6 p-4 bg-gray-100 dark:bg-gray-700 rounded-lg">
+            <h3 class="text-lg font-bold mb-4 text-center dark:text-gray-100">🗳️ Voting in Progress</h3>
+
+            <div id="current-voter-display" class="mb-3 p-2 rounded text-center bg-blue-100 dark:bg-blue-800">
+                <div class="text-sm text-blue-700 dark:text-blue-200">Current Voter:</div>
+                <div id="voter-name" class="font-bold text-blue-900 dark:text-blue-100">Waiting...</div>
+            </div>
+
+            <div id="vote-grid" class="grid grid-cols-2 gap-2 mb-3"></div>
+
+            <div id="voting-result" class="text-center font-semibold text-lg dark:text-gray-100 mt-3"></div>
         </div>
     </div>
 </div>
@@ -28,44 +39,99 @@
 @section Scripts {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.0/signalr.min.js"></script>
     <script>
-        const conn = new signalR.HubConnectionBuilder()
-          .withUrl("/gamehub")
-          .build();
+        const conn = new signalR.HubConnectionBuilder().withUrl("/gamehub").build();
+        let playerVotes = {};
 
+        conn.start();
+
+        // Role assignment
         conn.on("RoleAssigned", role => {
           const container = document.getElementById("role");
-          container.innerHTML = ''; // clear
-          // Normalize key for filename
+          container.innerHTML = '';
           const key = role.toLowerCase();
-          // Create image element
           const img = document.createElement("img");
           img.src = `/images/roles/${key}.png`;
           img.alt = role;
           img.className = "mx-auto w-32 h-32 object-contain";
-          // Create text
           const txt = document.createElement("div");
           txt.textContent = `Your role is: ${role}`;
           txt.className = "text-lg font-semibold";
-          // Append in order
           container.appendChild(img);
           container.appendChild(txt);
         });
 
-        document.getElementById("join")
-          .addEventListener("click", async () => {
+        // SIMPLE VOTING HANDLERS
+        conn.on("ShowVoting", (playerNames, currentVoter) => {
+          const players = playerNames.split(',');
+          playerVotes = {};
+
+          // Initialize vote counts
+          players.forEach(name => playerVotes[name] = 0);
+
+          // Show voting window
+          document.getElementById('voting-window').classList.remove('hidden');
+          document.getElementById('voter-name').textContent = currentVoter;
+
+          // Create vote grid
+          const grid = document.getElementById('vote-grid');
+          grid.innerHTML = '';
+
+          players.forEach(name => {
+            const item = document.createElement('div');
+            item.className = 'flex justify-between items-center px-2 py-1 bg-white dark:bg-gray-600 rounded border';
+            item.innerHTML = `<span class="font-medium dark:text-gray-100">${name}</span><span id="player-vote-${name}" class="font-bold text-lg dark:text-gray-100">0</span>`;
+            grid.appendChild(item);
+          });
+
+          document.getElementById('voting-result').textContent = '';
+        });
+
+        conn.on("UpdateVotes", (playerName, voteCount) => {
+          playerVotes[playerName] = voteCount;
+          const countElement = document.getElementById(`player-vote-${playerName}`);
+          if (countElement) {
+            countElement.textContent = voteCount;
+
+            // Highlight if has votes
+            const parentDiv = countElement.parentElement;
+            if (voteCount > 0) {
+              parentDiv.className = 'flex justify-between items-center px-2 py-1 bg-red-50 dark:bg-red-900 rounded border border-red-200 dark:border-red-700';
+              countElement.className = 'font-bold text-lg text-red-700 dark:text-red-300';
+              countElement.previousElementSibling.className = 'font-medium text-red-700 dark:text-red-300';
+            } else {
+              parentDiv.className = 'flex justify-between items-center px-2 py-1 bg-white dark:bg-gray-600 rounded border';
+              countElement.className = 'font-bold text-lg dark:text-gray-100';
+              countElement.previousElementSibling.className = 'font-medium dark:text-gray-100';
+            }
+          }
+        });
+
+        conn.on("UpdateCurrentVoter", (voterName) => {
+          document.getElementById('voter-name').textContent = voterName;
+        });
+
+        conn.on("ShowVoteResult", (result) => {
+          const resultDiv = document.getElementById('voting-result');
+          resultDiv.textContent = result;
+          resultDiv.className = 'text-center font-semibold text-lg text-red-600 dark:text-red-400 mt-3 p-2 bg-red-50 dark:bg-red-900 rounded';
+        });
+
+        conn.on("HideVoting", () => {
+          document.getElementById('voting-window').classList.add('hidden');
+        });
+
+        // Join game
+        document.getElementById("join").addEventListener("click", async () => {
             const name = document.getElementById("name").value.trim();
             if (!name) return alert("Please enter a name");
             try {
               await conn.invoke("Join", name);
               document.getElementById("join").disabled = true;
-              document.getElementById("status").textContent =
-                "✅ You’re in! Waiting for GM to deal roles…";
+              document.getElementById("status").textContent = "✅ You're in! Waiting for GM to deal roles…";
             } catch (err) {
-              console.error(err.toString());
+              console.error(err);
               alert("Could not connect—check console.");
             }
-          });
-
-        conn.start().catch(err => console.error("Connection failed: ", err));
+        });
     </script>
 }

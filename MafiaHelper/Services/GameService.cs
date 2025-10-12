@@ -1,5 +1,4 @@
-﻿
-namespace MafiaHelper.Services
+﻿namespace MafiaHelper.Services
 {
     public class Player
     {
@@ -19,14 +18,15 @@ namespace MafiaHelper.Services
     {
         private readonly List<Player> _players = new();
         private List<RoleConfig> _roleConfigs = new()
-    {
-        new() { Name = "Mafia",     Count = 1, Enabled = true  },
-        new() { Name = "Sheriff",   Count = 1, Enabled = true  },
-        new() { Name = "Doctor",    Count = 1, Enabled = true  },
-        new() { Name = "Putana",    Count = 1, Enabled = true  },
-        new() { Name = "Maniac",    Count = 1, Enabled = true  },
-        new() { Name = "Immortal",  Count = 1, Enabled = true  }
-    };
+        {
+            new() { Name = "Mafia",     Count = 1, Enabled = true  },
+            new() { Name = "Don",       Count = 1, Enabled = true  },
+            new() { Name = "Sheriff",   Count = 1, Enabled = true  },
+            new() { Name = "Doctor",    Count = 1, Enabled = true  },
+            new() { Name = "Putana",    Count = 1, Enabled = true  },
+            new() { Name = "Maniac",    Count = 1, Enabled = true  },
+            new() { Name = "Immortal",  Count = 1, Enabled = true  }
+        };
 
         public IReadOnlyList<Player> Players => _players;
         public IReadOnlyList<RoleConfig> RoleConfigs => _roleConfigs;
@@ -36,28 +36,23 @@ namespace MafiaHelper.Services
 
         public void SetRoleConfigs(List<RoleConfig> configs)
         {
-            // Replace existing configs while preserving role order
             _roleConfigs = configs;
         }
 
         public void DealRoles()
         {
-            // Build role list
             var roles = new List<string>();
             foreach (var rc in _roleConfigs.Where(rc => rc.Enabled))
             {
                 for (int i = 0; i < rc.Count; i++)
                     roles.Add(rc.Name);
             }
-            // Fill remaining slots with Villagers
             while (roles.Count < _players.Count)
                 roles.Add("Citizen");
 
-            // Shuffle
             var rng = new Random();
             roles = roles.OrderBy(_ => rng.Next()).ToList();
 
-            // Assign
             for (int i = 0; i < _players.Count; i++)
                 _players[i].Role = roles[i];
         }

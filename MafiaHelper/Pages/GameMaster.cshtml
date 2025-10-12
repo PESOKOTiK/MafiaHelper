@@ -22,6 +22,12 @@
                     <label for="role-mafia" class="ml-2 flex-1 dark:text-gray-200">Mafia</label>
                     <input type="number" id="role-mafia-count" min="1" class="w-16 px-2 py-1 border rounded dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100" value="1" />
                 </div>
+                <!-- NEW: Don role configuration -->
+                <div class="flex items-center">
+                    <input type="checkbox" id="role-don" class="h-4 w-4" />
+                    <label for="role-don" class="ml-2 flex-1 dark:text-gray-200">Don</label>
+                    <input type="number" id="role-don-count" min="1" class="w-16 px-2 py-1 border rounded dark:bg-gray-600 dark:border-gray-500 dark:text-gray-100" value="1" />
+                </div>
                 <div class="flex items-center"><input id="role-sheriff" type="checkbox" class="h-4 w-4" /><label for="role-sheriff" class="ml-2 flex-1 dark:text-gray-200">Sheriff</label></div>
                 <div class="flex items-center"><input id="role-doctor" type="checkbox" class="h-4 w-4" /><label for="role-doctor" class="ml-2 flex-1 dark:text-gray-200">Doctor</label></div>
                 <div class="flex items-center"><input id="role-putana" type="checkbox" class="h-4 w-4" /><label for="role-putana" class="ml-2 flex-1 dark:text-gray-200">Putana</label></div>
@@ -40,7 +46,10 @@
         <!-- Voting Window -->
         <div id="vote-window" class="bg-white dark:bg-gray-700 p-4 rounded shadow">
             <h3 class="font-bold mb-2 dark:text-gray-100">Voting</h3>
-            <button id="start-vote" class="mb-2 w-full bg-indigo-600 text-white py-2 rounded hover:bg-indigo-700 transition">Start Voting</button>
+            <div class="space-y-2 mb-4">
+                <button id="start-vote" class="w-full bg-indigo-600 text-white py-2 rounded hover:bg-indigo-700 transition">Start Voting</button>
+                <button id="start-night" class="w-full bg-purple-600 text-white py-2 rounded hover:bg-purple-700 transition">Start Night</button>
+            </div>
             <div id="current-voter" class="font-semibold dark:text-gray-200 mb-2"></div>
             <div id="vote-list" class="grid grid-cols-2 gap-2 mb-2"></div>
             <div id="vote-result" class="mt-2 dark:text-gray-200"></div>
@@ -78,9 +87,13 @@
         let alivePlayers = [];
         let voteCounts = {};
         let voterIndex = 0;
+        let nightRoles = [];
+        let nightIndex = 0;
 
+        conn.start().then(() => conn.invoke('RegisterGM'));
         const colorMap = {
           mafia: 'text-red-600 dark:text-red-400',
+          don: 'text-red-600 dark:text-red-400', 
           sheriff: 'text-green-600 dark:text-green-400',
           doctor: 'text-blue-600 dark:text-blue-400',
           putana: 'text-pink-600 dark:text-pink-400',
@@ -89,20 +102,34 @@
           villager: 'text-gray-50 dark:text-white'
         };
 
+        // Shuffle array
+        function shuffleArray(array) {
+            const shuffled = [...array];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            return shuffled;
+        }
+
         function renderPlayers() {
-          const ul = document.getElementById('players'); ul.innerHTML = '';
+          const ul = document.getElementById('players');
+          ul.innerHTML = '';
           players.forEach(p => {
             if (dead[p.name] === undefined) dead[p.name] = false;
             const li = document.createElement('li');
             li.className = dead[p.name]
               ? 'p-1 flex justify-between opacity-50 line-through'
               : 'p-1 flex justify-between';
+
             const nm = document.createElement('span');
             nm.textContent = p.name;
             nm.className = 'font-medium dark:text-gray-100';
+
             const rv = document.createElement('span');
             rv.textContent = p.role || '…waiting…';
             rv.className = `italic ${colorMap[(p.role||'').toLowerCase()] || 'text-gray-600 dark:text-gray-400'}`;
+
             const btn = document.createElement('button');
             btn.textContent = dead[p.name] ? 'Revive' : 'Kill';
             btn.className = dead[p.name]
@@ -112,6 +139,7 @@
               dead[p.name] = !dead[p.name];
               renderPlayers();
             };
+
             li.append(nm, rv, btn);
             ul.appendChild(li);
           });
@@ -122,33 +150,51 @@
           renderPlayers();
         });
 
+        // SIMPLE VOTING SYSTEM
         document.getElementById('start-vote').onclick = () => {
-          alivePlayers = players.filter(p => !dead[p.name]);
+          const alive = players.filter(p => !dead[p.name]);
+          alivePlayers = shuffleArray(alive);
           voteCounts = {};
           voterIndex = 0;
-          const voteList = document.getElementById('vote-list'); voteList.innerHTML = '';
+
+          // Clear and rebuild vote buttons
+          const voteList = document.getElementById('vote-list');
+          voteList.innerHTML = '';
+
           alivePlayers.forEach(p => {
             voteCounts[p.name] = 0;
+
             const btn = document.createElement('button');
             btn.className = 'flex justify-between items-center px-2 py-1 bg-gray-200 dark:bg-gray-600 rounded';
-            const nameSpan = document.createElement('span'); nameSpan.textContent = p.name;
-            const countSpan = document.createElement('span'); countSpan.textContent = '0'; countSpan.className = 'ml-2 font-bold';
-            btn.append(nameSpan, countSpan);
+            btn.innerHTML = `<span>${p.name}</span><span id="count-${p.name}">0</span>`;
+
             btn.onclick = () => {
               voteCounts[p.name]++;
-              countSpan.textContent = voteCounts[p.name];
+              document.getElementById(`count-${p.name}`).textContent = voteCounts[p.name];
+
+              // Send vote update to all players
+              conn.invoke('UpdateVotes', p.name, voteCounts[p.name]);
+
               voterIndex++;
               if (voterIndex < alivePlayers.length) {
                 document.getElementById('current-voter').textContent = `Voter: ${alivePlayers[voterIndex].name}`;
+                conn.invoke('UpdateCurrentVoter', alivePlayers[voterIndex].name);
               } else {
                 endVoting();
               }
             };
+
             voteList.appendChild(btn);
           });
-          if (alivePlayers.length) {
+
+          // Set first voter
+          if (alivePlayers.length > 0) {
             document.getElementById('current-voter').textContent = `Voter: ${alivePlayers[0].name}`;
             document.getElementById('vote-result').textContent = '';
+
+            // Send to all players: show voting with player list and first voter
+            const playerNames = alivePlayers.map(p => p.name).join(',');
+            conn.invoke('ShowVoting', playerNames, alivePlayers[0].name);
           }
         };
 
@@ -156,25 +202,38 @@
           const entries = Object.entries(voteCounts);
           const max = Math.max(...entries.map(e => e[1]));
           const top = entries.filter(e => e[1] === max).map(e => e[0]);
-          let res = '';
+
+          let result = '';
           if (max === 0 || top.length === alivePlayers.length) {
-            res = 'No one is kicked.';
+            result = 'No one is kicked.';
           } else if (top.length === 1) {
-            res = `${top[0]} is kicked.`;
+            result = `${top[0]} is kicked.`;
           } else {
-            res = `Revote: ${top.join(' & ')}`;
+            result = `Revote: ${top.join(' & ')}`;
           }
-          document.getElementById('vote-result').textContent = res;
+
+          document.getElementById('vote-result').textContent = result;
           document.getElementById('current-voter').textContent = 'Voting complete';
+
+          // Send result to all players
+          conn.invoke('ShowVoteResult', result);
+          conn.invoke('UpdateCurrentVoter', 'Voting complete');
         }
+
+        document.getElementById('start-night').onclick = () => {
+          conn.invoke('HideVoting');
+        };
 
         // Timer
         document.getElementById('start-timer').onclick = () => {
           let time = 60;
           clearInterval(window.timerInterval);
-          const disp = document.getElementById('timer-display'); disp.textContent = time;
+          const disp = document.getElementById('timer-display');
+          disp.textContent = time;
           window.timerInterval = setInterval(() => {
-            time--; disp.textContent = time; if (time <= 0) clearInterval(window.timerInterval);
+            time--;
+            disp.textContent = time;
+            if (time <= 0) clearInterval(window.timerInterval);
           }, 1000);
         };
 
@@ -183,33 +242,41 @@
           const roles = configs.filter(c => c.Enabled || c.enabled).map(c => c.Name || c.name);
           nightRoles = roles;
           nightIndex = 0;
-          const div = document.getElementById('night-roles'); div.innerHTML = '';
+          const div = document.getElementById('night-roles');
+          div.innerHTML = '';
           roles.forEach(r => {
-            const el = document.createElement('div'); el.textContent = r;
-            el.className = 'px-2 py-1 bg-blue-200 dark:bg-blue-600 rounded'; div.appendChild(el);
+            const el = document.createElement('div');
+            el.textContent = r;
+            el.className = 'px-2 py-1 bg-blue-200 dark:bg-blue-600 rounded';
+            div.appendChild(el);
           });
           document.getElementById('current-phase').textContent = '';
         });
+
         document.getElementById('next-night').onclick = () => {
           const cp = document.getElementById('current-phase');
           if (nightIndex < nightRoles.length) {
             cp.textContent = `Phase: ${nightRoles[nightIndex]}`;
             nightIndex++;
           } else {
-            cp.textContent = 'Night complete'; nightIndex = 0;
+            cp.textContent = 'Night complete';
+            nightIndex = 0;
           }
         };
 
-        // Settings
         document.getElementById('settings').onclick = () => document.getElementById('role-config').classList.toggle('hidden');
         document.getElementById('update-roles').onclick = () => {
-          const names = ['Mafia','Sheriff','Doctor','Putana','Maniac','Immortal'];
-          const configs = names.map(name => ({ Name: name, Enabled: document.getElementById('role-'+name.toLowerCase()).checked, Count: name==='Mafia'? parseInt(document.getElementById('role-mafia-count').value)||1 :1 }));
+          const names = ['Mafia', 'Don', 'Sheriff', 'Doctor', 'Putana', 'Maniac', 'Immortal'];
+          const configs = names.map(name => ({
+            Name: name,
+            Enabled: document.getElementById('role-'+name.toLowerCase()).checked,
+            Count: (name === 'Mafia') ? parseInt(document.getElementById('role-mafia-count').value) || 1 :
+                   (name === 'Don') ? parseInt(document.getElementById('role-don-count').value) || 1 : 1
+          }));
           conn.invoke('UpdateRoleConfigs', configs).then(() => document.getElementById('role-config').classList.add('hidden'));
         };
 
-        // Deal & init
+        // Deal roles
         document.getElementById('deal').onclick = () => conn.invoke('DealRoles');
-        conn.start().then(() => conn.invoke('RegisterGM')).catch(console.error);
     </script>
 }

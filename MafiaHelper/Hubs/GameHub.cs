@@ -24,25 +24,20 @@ namespace MafiaHelper.Hubs
                 Role = null
             };
             _game.AddPlayer(player);
-            // Notify GMs of updated roster
-            await Clients.Group("gamemasters")
-                         .SendAsync("PlayersUpdated", _game.Players);
+            await Clients.Group("gamemasters").SendAsync("PlayersUpdated", _game.Players);
         }
 
         public override async Task OnDisconnectedAsync(System.Exception exception)
         {
             _game.RemovePlayer(Context.ConnectionId);
-            await Clients.Group("gamemasters")
-                         .SendAsync("PlayersUpdated", _game.Players);
+            await Clients.Group("gamemasters").SendAsync("PlayersUpdated", _game.Players);
             await base.OnDisconnectedAsync(exception);
         }
 
         public async Task RegisterGM()
         {
             await Groups.AddToGroupAsync(Context.ConnectionId, "gamemasters");
-            // Send current players
             await Clients.Caller.SendAsync("PlayersUpdated", _game.Players);
-            // Send current role configs
             var cfg = _game.RoleConfigs.Select(rc => new RoleConfigDto
             {
                 Name = rc.Name,
@@ -54,7 +49,6 @@ namespace MafiaHelper.Hubs
 
         public async Task UpdateRoleConfigs(List<RoleConfigDto> configs)
         {
-            // Map DTOs back to internal RoleConfig
             var newConfigs = configs.Select(c => new RoleConfig
             {
                 Name = c.Name,
@@ -62,24 +56,43 @@ namespace MafiaHelper.Hubs
                 Enabled = c.Enabled
             }).ToList();
             _game.SetRoleConfigs(newConfigs);
-            // Broadcast new configs to all GMs
-            await Clients.Group("gamemasters")
-                         .SendAsync("RoleConfigsUpdated", configs);
+            await Clients.Group("gamemasters").SendAsync("RoleConfigsUpdated", configs);
         }
 
         public async Task DealRoles()
         {
             _game.DealRoles();
-            // Send each player their own role
             foreach (var p in _game.Players)
             {
-                await Clients.Client(p.ConnectionId)
-                             .SendAsync("RoleAssigned", p.Role);
+                await Clients.Client(p.ConnectionId).SendAsync("RoleAssigned", p.Role);
             }
-            // Send updated roster to GMs
-            await Clients.Group("gamemasters")
-                         .SendAsync("PlayersUpdated", _game.Players);
+            await Clients.Group("gamemasters").SendAsync("PlayersUpdated", _game.Players);
+        }
+
+        // SIMPLE VOTING METHODS
+        public async Task ShowVoting(string playerNames, string currentVoter)
+        {
+            await Clients.All.SendAsync("ShowVoting", playerNames, currentVoter);
+        }
+
+        public async Task UpdateVotes(string playerName, int voteCount)
+        {
+            await Clients.All.SendAsync("UpdateVotes", playerName, voteCount);
+        }
+
+        public async Task UpdateCurrentVoter(string voterName)
+        {
+            await Clients.All.SendAsync("UpdateCurrentVoter", voterName);
+        }
+
+        public async Task ShowVoteResult(string result)
+        {
+            await Clients.All.SendAsync("ShowVoteResult", result);
+        }
+
+        public async Task HideVoting()
+        {
+            await Clients.All.SendAsync("HideVoting");
         }
     }
-
 }
