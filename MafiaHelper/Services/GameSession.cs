@@ -1,38 +1,41 @@
-﻿namespace MafiaHelper.Services
+using MafiaHelper.Hubs;
+
+namespace MafiaHelper.Services
 {
-    public class Player
+    public class GameSession
     {
-        public string ConnectionId { get; set; }
-        public string Name { get; set; }
-        public string Role { get; set; }
-    }
+        public string Code { get; private set; }
+        public string GameMasterId { get; set; }
 
-    public class RoleConfig
-    {
-        public string Name { get; set; }
-        public int Count { get; set; }
-        public bool Enabled { get; set; }
-    }
-
-    public class GameService
-    {
         private readonly List<Player> _players = new();
         private List<RoleConfig> _roleConfigs = new()
         {
             new() { Name = "Mafia",     Count = 1, Enabled = true  },
-            new() { Name = "Don",       Count = 1, Enabled = true  },
-            new() { Name = "Sheriff",   Count = 1, Enabled = true  },
-            new() { Name = "Doctor",    Count = 1, Enabled = true  },
-            new() { Name = "Putana",    Count = 1, Enabled = true  },
-            new() { Name = "Maniac",    Count = 1, Enabled = true  },
-            new() { Name = "Immortal",  Count = 1, Enabled = true  }
+            new() { Name = "Don",       Count = 1, Enabled = false },
+            new() { Name = "Sheriff",   Count = 1, Enabled = false },
+            new() { Name = "Doctor",    Count = 1, Enabled = false },
+            new() { Name = "Putana",    Count = 1, Enabled = false },
+            new() { Name = "Maniac",    Count = 1, Enabled = false },
+            new() { Name = "Immortal",  Count = 1, Enabled = false }
         };
+
+        public GameSession(string code)
+        {
+            Code = code;
+        }
 
         public IReadOnlyList<Player> Players => _players;
         public IReadOnlyList<RoleConfig> RoleConfigs => _roleConfigs;
 
-        public void AddPlayer(Player player) => _players.Add(player);
-        public void RemovePlayer(string connId) => _players.RemoveAll(p => p.ConnectionId == connId);
+        public void AddPlayer(Player player)
+        {
+            _players.Add(player);
+        }
+
+        public void RemovePlayer(string connId)
+        {
+            _players.RemoveAll(p => p.ConnectionId == connId);
+        }
 
         public void SetRoleConfigs(List<RoleConfig> configs)
         {

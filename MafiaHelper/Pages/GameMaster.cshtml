@@ -4,7 +4,10 @@
 <div class="max-w-5xl mx-auto bg-white dark:bg-gray-800 rounded-xl shadow-md p-6">
     <!-- Header -->
     <div class="flex justify-between items-center mb-6">
-        <h2 class="text-2xl font-bold dark:text-gray-100">Game Master Dashboard</h2>
+        <div>
+            <h2 class="text-2xl font-bold dark:text-gray-100">Game Master Dashboard</h2>
+            <div id="session-info" class="text-sm text-gray-500 dark:text-gray-400 font-mono">Connecting...</div>
+        </div>
         <div class="space-x-2">
             <button id="settings" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 transition">Settings</button>
             <button id="deal" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition">Deal Roles</button>
@@ -85,7 +88,17 @@
         let nightRoles = [];
         let nightIndex = 0;
 
-        conn.start().then(() => conn.invoke('RegisterGM'));
+        conn.start().then(async () => {
+            try {
+                const code = await conn.invoke('CreateSession');
+                document.getElementById('session-info').textContent = `Room Code: ${code}`;
+                // Also get initial state just in case
+                await conn.invoke('GetInitialState');
+            } catch (err) {
+                console.error(err);
+                alert("Failed to create session.");
+            }
+        });
         const colorMap = {
           mafia: 'text-red-600 dark:text-red-400',
           don: 'text-red-600 dark:text-red-400', 
@@ -151,8 +164,6 @@
           alivePlayers = shuffleArray(alive);
           voteCounts = {};
           voterIndex = 0;
-
-          // Clear and rebuild vote buttons
           const voteList = document.getElementById('vote-list');
           voteList.innerHTML = '';
 
@@ -166,8 +177,6 @@
             btn.onclick = () => {
               voteCounts[p.name]++;
               document.getElementById(`count-${p.name}`).textContent = voteCounts[p.name];
-
-              // Send vote update to all players
               conn.invoke('UpdateVotes', p.name, voteCounts[p.name]);
 
               voterIndex++;
@@ -181,13 +190,9 @@
 
             voteList.appendChild(btn);
           });
-
-          // Set first voter
           if (alivePlayers.length > 0) {
             document.getElementById('current-voter').textContent = `Voter: ${alivePlayers[0].name}`;
             document.getElementById('vote-result').textContent = '';
-
-            // Send to all players: show voting with player list and first voter
             const playerNames = alivePlayers.map(p => p.name).join(',');
             conn.invoke('ShowVoting', playerNames, alivePlayers[0].name);
           }
@@ -209,8 +214,6 @@
 
           document.getElementById('vote-result').textContent = result;
           document.getElementById('current-voter').textContent = 'Voting complete';
-
-          // Send result to all players
           conn.invoke('ShowVoteResult', result);
           conn.invoke('UpdateCurrentVoter', 'Voting complete');
         }

@@ -12,87 +12,144 @@ namespace MafiaHelper.Hubs
 
     public class GameHub : Hub
     {
-        private readonly GameService _game;
-        public GameHub(GameService game) => _game = game;
+        private readonly GameSessionManager _manager;
 
-        public async Task Join(string playerName)
+        public GameHub(GameSessionManager manager) => _manager = manager;
+
+        public async Task<string> CreateSession()
         {
+            var session = _manager.CreateSession(Context.ConnectionId);
+            await Groups.AddToGroupAsync(Context.ConnectionId, "GM_" + session.Code);
+            await Groups.AddToGroupAsync(Context.ConnectionId, "Session_" + session.Code);
+            return session.Code;
+        }
+
+        public async Task Join(string playerName, string code)
+        {
+            var session = _manager.GetSession(code);
+            if (session == null)
+            {
+                throw new HubException("Session not found");
+            }
+
             var player = new Player
             {
                 ConnectionId = Context.ConnectionId,
                 Name = playerName,
                 Role = null
             };
-            _game.AddPlayer(player);
-            await Clients.Group("gamemasters").SendAsync("PlayersUpdated", _game.Players);
+            session.AddPlayer(player);
+            _manager.AddPlayerToSession(Context.ConnectionId, session.Code);
+
+            await Groups.AddToGroupAsync(Context.ConnectionId, "Session_" + session.Code);
+
+            await Clients.Group("GM_" + session.Code).SendAsync("PlayersUpdated", session.Players);
         }
 
         public override async Task OnDisconnectedAsync(System.Exception exception)
         {
-            _game.RemovePlayer(Context.ConnectionId);
-            await Clients.Group("gamemasters").SendAsync("PlayersUpdated", _game.Players);
+            var session = _manager.GetSessionByConnectionId(Context.ConnectionId);
+            if (session != null)
+            {
+                session.RemovePlayer(Context.ConnectionId);
+                _manager.RemoveConnection(Context.ConnectionId);
+                
+                // If it was a player, update GM
+                // If it was GM... well, session technically continues but no GM, i guess players should start again :)
+                await Clients.Group("GM_" + session.Code).SendAsync("PlayersUpdated", session.Players);
+            }
             await base.OnDisconnectedAsync(exception);
         }
 
-        public async Task RegisterGM()
+        public async Task GetInitialState()
         {
-            await Groups.AddToGroupAsync(Context.ConnectionId, "gamemasters");
-            await Clients.Caller.SendAsync("PlayersUpdated", _game.Players);
-            var cfg = _game.RoleConfigs.Select(rc => new RoleConfigDto
-            {
-                Name = rc.Name,
-                Count = rc.Count,
-                Enabled = rc.Enabled
-            }).ToList();
-            await Clients.Caller.SendAsync("RoleConfigsUpdated", cfg);
+             var session = _manager.GetSessionByConnectionId(Context.ConnectionId);
+             if (session != null && session.GameMasterId == Context.ConnectionId)
+             {
+                 await Clients.Caller.SendAsync("PlayersUpdated", session.Players);
+                 var cfg = session.RoleConfigs.Select(rc => new RoleConfigDto
+                 {
+                     Name = rc.Name,
+                     Count = rc.Count,
+                     Enabled = rc.Enabled
+                 }).ToList();
+                 await Clients.Caller.SendAsync("RoleConfigsUpdated", cfg);
+             }
         }
 
         public async Task UpdateRoleConfigs(List<RoleConfigDto> configs)
         {
+            var session = _manager.GetSessionByConnectionId(Context.ConnectionId);
+            if (session == null) return;
+
             var newConfigs = configs.Select(c => new RoleConfig
             {
                 Name = c.Name,
                 Count = c.Count,
                 Enabled = c.Enabled
             }).ToList();
-            _game.SetRoleConfigs(newConfigs);
-            await Clients.Group("gamemasters").SendAsync("RoleConfigsUpdated", configs);
+            session.SetRoleConfigs(newConfigs);
+        
+            await Clients.Group("GM_" + session.Code).SendAsync("RoleConfigsUpdated", configs);
         }
 
         public async Task DealRoles()
         {
-            _game.DealRoles();
-            foreach (var p in _game.Players)
+            var session = _manager.GetSessionByConnectionId(Context.ConnectionId);
+            if (session == null) return;
+
+            session.DealRoles();
+            foreach (var p in session.Players)
             {
                 await Clients.Client(p.ConnectionId).SendAsync("RoleAssigned", p.Role);
             }
-            await Clients.Group("gamemasters").SendAsync("PlayersUpdated", _game.Players);
+            await Clients.Group("GM_" + session.Code).SendAsync("PlayersUpdated", session.Players);
         }
 
-        // SIMPLE VOTING METHODS
+        // VOTING METHODS
         public async Task ShowVoting(string playerNames, string currentVoter)
         {
-            await Clients.All.SendAsync("ShowVoting", playerNames, currentVoter);
+            var session = _manager.GetSessionByConnectionId(Context.ConnectionId);
+            if (session != null)
+            {
+                await Clients.Group("Session_" + session.Code).SendAsync("ShowVoting", playerNames, currentVoter);
+            }
         }
 
         public async Task UpdateVotes(string playerName, int voteCount)
         {
-            await Clients.All.SendAsync("UpdateVotes", playerName, voteCount);
+            var session = _manager.GetSessionByConnectionId(Context.ConnectionId);
+            if (session != null)
+            {
+                await Clients.Group("Session_" + session.Code).SendAsync("UpdateVotes", playerName, voteCount);
+            }
         }
 
         public async Task UpdateCurrentVoter(string voterName)
         {
-            await Clients.All.SendAsync("UpdateCurrentVoter", voterName);
+            var session = _manager.GetSessionByConnectionId(Context.ConnectionId);
+            if (session != null)
+            {
+                await Clients.Group("Session_" + session.Code).SendAsync("UpdateCurrentVoter", voterName);
+            }
         }
 
         public async Task ShowVoteResult(string result)
         {
-            await Clients.All.SendAsync("ShowVoteResult", result);
+            var session = _manager.GetSessionByConnectionId(Context.ConnectionId);
+            if (session != null)
+            {
+                await Clients.Group("Session_" + session.Code).SendAsync("ShowVoteResult", result);
+            }
         }
 
         public async Task HideVoting()
         {
-            await Clients.All.SendAsync("HideVoting");
+            var session = _manager.GetSessionByConnectionId(Context.ConnectionId);
+            if (session != null)
+            {
+                await Clients.Group("Session_" + session.Code).SendAsync("HideVoting");
+            }
         }
     }
 }

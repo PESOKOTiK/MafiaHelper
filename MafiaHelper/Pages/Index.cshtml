@@ -5,15 +5,28 @@
     <h2 class="text-xl font-bold mb-4 dark:text-gray-100">Join Mafia Game</h2>
 
     <div class="space-y-4">
-        <input id="name"
-               type="text"
-               placeholder="Your name"
-               class="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-400 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400" />
+        <div id="login-form" class="space-y-4">
+            <input id="name"
+                   type="text"
+                   placeholder="Your name"
+                   class="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-400 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400" />
 
-        <button id="join"
-                class="w-full bg-indigo-600 text-white py-2 rounded hover:bg-indigo-700 transition">
-            Connect
-        </button>
+            <input id="room-code"
+                   type="text"
+                   placeholder="Room Code (e.g. ABCD)"
+                   class="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-400 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 uppercase" />
+
+            <div class="flex space-x-2">
+                <button id="join"
+                        class="flex-1 bg-indigo-600 text-white py-2 rounded hover:bg-indigo-700 transition">
+                    Join
+                </button>
+                <a href="/GameMaster"
+                   class="flex-1 block text-center bg-gray-600 text-white py-2 rounded hover:bg-gray-700 transition">
+                    Create
+                </a>
+            </div>
+        </div>
 
         <div id="status" class="text-green-600 font-medium dark:text-green-400"></div>
 
@@ -123,14 +136,18 @@
         // Join game
         document.getElementById("join").addEventListener("click", async () => {
             const name = document.getElementById("name").value.trim();
+            const code = document.getElementById("room-code").value.trim();
+            
             if (!name) return alert("Please enter a name");
+            if (!code) return alert("Please enter a room code");
+
             try {
-              await conn.invoke("Join", name);
-              document.getElementById("join").disabled = true;
-              document.getElementById("status").textContent = "✅ You're in! Waiting for GM to deal roles…";
+              await conn.invoke("Join", name, code);
+              document.getElementById("login-form").classList.add("hidden");
+              document.getElementById("status").textContent = `✅ Joined room ${code}! Waiting for GM…`;
             } catch (err) {
               console.error(err);
-              alert("Could not connect—check console.");
+              alert("Could not connect: " + err.toString());
             }
         });
     </script>
