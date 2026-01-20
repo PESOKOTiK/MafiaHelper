@@ -51,14 +51,20 @@ When the town needs to decide who to eliminate, the voting interface appears on 
 
 ### 🏃‍♂️ Getting Started
 
-1. Clone the repository.
+1. Download selfhosted version.
 2. Run the application:
    ```bash
    dotnet run --project MafiaHelper
    ```
 3. Open `http://localhost:5000` (or the URL shown in console).
-4. **GM**: Navigate to `/GameMaster` to create a room.
-5. **Players**: Go to the home page and enter the Room Code.
+4. **GM**: Navigate to `/GameMaster` to be gm.
+5. **Players**: Go to the home page to play.
+
+---
+
+###OR
+
+1. Go to https://144.21.34.14:5165 to play right now
 
 ---
 
