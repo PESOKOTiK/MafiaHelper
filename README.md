@@ -62,9 +62,9 @@ When the town needs to decide who to eliminate, the voting interface appears on 
 
 ---
 
-###OR
+### OR
 
-1. Go to https://144.21.34.14:5165 to play right now
+1. Go to http://144.21.34.14:5165 to play right now
 
 ---
 
