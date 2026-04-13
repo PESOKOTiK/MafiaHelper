@@ -53,9 +53,6 @@ namespace MafiaHelper.Hubs
             {
                 session.RemovePlayer(Context.ConnectionId);
                 _manager.RemoveConnection(Context.ConnectionId);
-                
-                // If it was a player, update GM
-                // If it was GM... well, session technically continues but no GM, i guess players should start again :)
                 await Clients.Group("GM_" + session.Code).SendAsync("PlayersUpdated", session.Players);
             }
             await base.OnDisconnectedAsync(exception);

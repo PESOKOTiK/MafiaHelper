@@ -92,7 +92,6 @@
             try {
                 const code = await conn.invoke('CreateSession');
                 document.getElementById('session-info').textContent = `Room Code: ${code}`;
-                // Also get initial state just in case
                 await conn.invoke('GetInitialState');
             } catch (err) {
                 console.error(err);
