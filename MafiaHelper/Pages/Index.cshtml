@@ -1,7 +1,7 @@
-﻿@page
+@page
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
 
-<div class="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden p-6">
+<div class="max-w-md mx-auto bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden p-4 sm:p-6">
     <h2 class="text-xl font-bold mb-4 dark:text-gray-100">Join Mafia Game</h2>
 
     <div class="space-y-4">
@@ -42,7 +42,7 @@
                 <div id="voter-name" class="font-bold text-blue-900 dark:text-blue-100">Waiting...</div>
             </div>
 
-            <div id="vote-grid" class="grid grid-cols-2 gap-2 mb-3"></div>
+            <div id="vote-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3"></div>
 
             <div id="voting-result" class="text-center font-semibold text-lg dark:text-gray-100 mt-3"></div>
         </div>
