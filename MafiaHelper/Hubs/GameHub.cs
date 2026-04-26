@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.SignalR;
+using Microsoft.AspNetCore.SignalR;
 using MafiaHelper.Services;
 
 namespace MafiaHelper.Hubs
@@ -32,6 +32,11 @@ namespace MafiaHelper.Hubs
                 throw new HubException("Session not found");
             }
 
+            if (session.Players.Any(p => p.Name.Equals(playerName, StringComparison.OrdinalIgnoreCase)))
+            {
+                throw new HubException("A player with this name is already in the room.");
+            }
+
             var player = new Player
             {
                 ConnectionId = Context.ConnectionId,
@@ -51,6 +56,11 @@ namespace MafiaHelper.Hubs
             var session = _manager.GetSessionByConnectionId(Context.ConnectionId);
             if (session != null)
             {
+                if (session.GameMasterId == Context.ConnectionId)
+                {
+                    _manager.ScheduleSessionCleanup(session.Code);
+                }
+
                 session.RemovePlayer(Context.ConnectionId);
                 _manager.RemoveConnection(Context.ConnectionId);
                 await Clients.Group("GM_" + session.Code).SendAsync("PlayersUpdated", session.Players);
@@ -104,6 +114,15 @@ namespace MafiaHelper.Hubs
         }
 
         // VOTING METHODS
+        public async Task SubmitPlayerVote(string targetName)
+        {
+            var session = _manager.GetSessionByConnectionId(Context.ConnectionId);
+            if (session != null)
+            {
+                await Clients.Group("GM_" + session.Code).SendAsync("PlayerVoted", targetName);
+            }
+        }
+
         public async Task ShowVoting(string playerNames, string currentVoter)
         {
             var session = _manager.GetSessionByConnectionId(Context.ConnectionId);

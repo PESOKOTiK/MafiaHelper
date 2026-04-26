@@ -217,6 +217,23 @@
           conn.invoke('UpdateCurrentVoter', 'Voting complete');
         }
 
+        conn.on('PlayerVoted', targetName => {
+          const targetPlayer = alivePlayers.find(p => p.name === targetName);
+          if (targetPlayer && voterIndex < alivePlayers.length) {
+            voteCounts[targetName]++;
+            document.getElementById(`count-${targetName}`).textContent = voteCounts[targetName];
+            conn.invoke('UpdateVotes', targetName, voteCounts[targetName]);
+
+            voterIndex++;
+            if (voterIndex < alivePlayers.length) {
+              document.getElementById('current-voter').textContent = `Voter: ${alivePlayers[voterIndex].name}`;
+              conn.invoke('UpdateCurrentVoter', alivePlayers[voterIndex].name);
+            } else {
+              endVoting();
+            }
+          }
+        });
+
         document.getElementById('start-night').onclick = () => {
           conn.invoke('HideVoting');
         };

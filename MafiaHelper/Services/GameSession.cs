@@ -45,11 +45,38 @@ namespace MafiaHelper.Services
         public void DealRoles()
         {
             var roles = new List<string>();
-            foreach (var rc in _roleConfigs.Where(rc => rc.Enabled))
+            int maxMafia = Math.Max(1, _players.Count / 3);
+            int currentMafia = 0;
+            int totalSpecial = 0;
+
+            var donConfig = _roleConfigs.FirstOrDefault(r => r.Name == "Don" && r.Enabled);
+            if (donConfig != null && donConfig.Count > 0)
             {
-                for (int i = 0; i < rc.Count; i++)
-                    roles.Add(rc.Name);
+                roles.Add("Don");
+                currentMafia++;
+                totalSpecial++;
             }
+
+            var mafiaConfig = _roleConfigs.FirstOrDefault(r => r.Name == "Mafia" && r.Enabled);
+            if (mafiaConfig != null)
+            {
+                for (int i = 0; i < mafiaConfig.Count && currentMafia < maxMafia; i++)
+                {
+                    roles.Add("Mafia");
+                    currentMafia++;
+                    totalSpecial++;
+                }
+            }
+
+            foreach (var rc in _roleConfigs.Where(rc => rc.Enabled && rc.Name != "Don" && rc.Name != "Mafia"))
+            {
+                for (int i = 0; i < rc.Count && totalSpecial < _players.Count - 1; i++)
+                {
+                    roles.Add(rc.Name);
+                    totalSpecial++;
+                }
+            }
+
             while (roles.Count < _players.Count)
                 roles.Add("Citizen");
 

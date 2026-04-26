@@ -50,6 +50,15 @@ namespace MafiaHelper.Services
             _connectionSessions.TryRemove(connectionId, out _);
         }
 
+        public void ScheduleSessionCleanup(string code)
+        {
+            Task.Run(async () =>
+            {
+                await Task.Delay(TimeSpan.FromMinutes(30));
+                _sessions.TryRemove(code, out _);
+            });
+        }
+
         private string GenerateCode()
         {
             const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";

@@ -54,11 +54,15 @@
     <script>
         const conn = new signalR.HubConnectionBuilder().withUrl("/gamehub").build();
         let playerVotes = {};
+        let currentPlayerName = "";
+        let currentRoomCode = "";
+        let currentVoterName = "";
 
         conn.start();
 
         // Role assignment
         conn.on("RoleAssigned", role => {
+          document.getElementById("status").textContent = `👤 ${currentPlayerName} | 🏠 Room: ${currentRoomCode}`;
           const container = document.getElementById("role");
           container.innerHTML = '';
           const key = role.toLowerCase();
@@ -77,6 +81,7 @@
         conn.on("ShowVoting", (playerNames, currentVoter) => {
           const players = playerNames.split(',');
           playerVotes = {};
+          currentVoterName = currentVoter;
 
           // Initialize vote counts
           players.forEach(name => playerVotes[name] = 0);
@@ -91,12 +96,21 @@
 
           players.forEach(name => {
             const item = document.createElement('div');
-            item.className = 'flex justify-between items-center px-2 py-1 bg-white dark:bg-gray-600 rounded border';
+            item.className = 'flex justify-between items-center px-2 py-1 bg-white dark:bg-gray-600 rounded border transition-colors';
+            item.style.cursor = currentVoterName === currentPlayerName ? 'pointer' : 'default';
             item.innerHTML = `<span class="font-medium dark:text-gray-100">${name}</span><span id="player-vote-${name}" class="font-bold text-lg dark:text-gray-100">0</span>`;
+            
+            item.onclick = () => {
+              if (currentVoterName === currentPlayerName) {
+                conn.invoke("SubmitPlayerVote", name);
+              }
+            };
+
             grid.appendChild(item);
           });
 
           document.getElementById('voting-result').textContent = '';
+          updateVotingHighlight();
         });
 
         conn.on("UpdateVotes", (playerName, voteCount) => {
@@ -121,7 +135,30 @@
 
         conn.on("UpdateCurrentVoter", (voterName) => {
           document.getElementById('voter-name').textContent = voterName;
+          currentVoterName = voterName;
+          
+          const grid = document.getElementById('vote-grid');
+          Array.from(grid.children).forEach(child => {
+             child.style.cursor = currentVoterName === currentPlayerName ? 'pointer' : 'default';
+          });
+          
+          updateVotingHighlight();
         });
+
+        function updateVotingHighlight() {
+          const container = document.getElementById('current-voter-display');
+          if (currentVoterName === currentPlayerName) {
+            container.classList.replace('bg-blue-100', 'bg-green-100');
+            container.classList.replace('dark:bg-blue-800', 'dark:bg-green-800');
+            document.getElementById('voter-name').className = 'font-bold text-green-900 dark:text-green-100 text-xl';
+          } else {
+            if (container.classList.contains('bg-green-100')) {
+              container.classList.replace('bg-green-100', 'bg-blue-100');
+              container.classList.replace('dark:bg-green-800', 'dark:bg-blue-800');
+            }
+            document.getElementById('voter-name').className = 'font-bold text-blue-900 dark:text-blue-100';
+          }
+        }
 
         conn.on("ShowVoteResult", (result) => {
           const resultDiv = document.getElementById('voting-result');
@@ -143,6 +180,8 @@
 
             try {
               await conn.invoke("Join", name, code);
+              currentPlayerName = name;
+              currentRoomCode = code;
               document.getElementById("login-form").classList.add("hidden");
               document.getElementById("status").textContent = `✅ Joined room ${code}! Waiting for GM…`;
             } catch (err) {
