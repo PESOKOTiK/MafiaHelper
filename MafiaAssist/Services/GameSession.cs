@@ -1,6 +1,6 @@
-using MafiaHelper.Hubs;
+using MafiaAssist.Hubs;
 
-namespace MafiaHelper.Services
+namespace MafiaAssist.Services
 {
     public class GameSession
     {

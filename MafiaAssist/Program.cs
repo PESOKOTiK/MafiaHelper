@@ -1,5 +1,5 @@
-using MafiaHelper.Hubs;
-using MafiaHelper.Services;
+using MafiaAssist.Hubs;
+using MafiaAssist.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 

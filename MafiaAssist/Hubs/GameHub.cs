@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.SignalR;
-using MafiaHelper.Services;
+using MafiaAssist.Services;
 
-namespace MafiaHelper.Hubs
+namespace MafiaAssist.Hubs
 {
     public class RoleConfigDto
     {

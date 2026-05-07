@@ -1,8 +1,8 @@
-# 🕵️‍♂️ MafiaHelper
+# 🕵️‍♂️ MafiaAssist
 
 **The ultimate companion for your Mafia game nights.**
 
-MafiaHelper is a real-time web application designed to streamline the role-playing game Mafia. It handles role distribution, voting phases, timers, and game state management, allowing the Game Master (GM) to focus on the narrative and players to focus on the deception.
+MafiaAssist is a real-time web application designed to streamline the role-playing game Mafia. It handles role distribution, voting phases, timers, and game state management, allowing the Game Master (GM) to focus on the narrative and players to focus on the deception.
 
 Built with **ASP.NET Core**, **SignalR**, and **Tailwind CSS**.
 
@@ -54,7 +54,7 @@ When the town needs to decide who to eliminate, the voting interface appears on 
 1. Download selfhosted version.
 2. Run the application:
    ```bash
-   dotnet run --project MafiaHelper
+   dotnet run --project MafiaAssist
    ```
 3. Open `http://localhost:5000` (or the URL shown in console).
 4. **GM**: Navigate to `/GameMaster` to be gm.

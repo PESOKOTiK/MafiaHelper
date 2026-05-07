@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
-namespace MafiaHelper.Pages
+namespace MafiaAssist.Pages
 {
     public class GameMasterModel : PageModel
     {

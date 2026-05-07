@@ -1,4 +1,4 @@
-namespace MafiaHelper.Services
+namespace MafiaAssist.Services
 {
     public class Player
     {

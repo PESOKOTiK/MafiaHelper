@@ -1,6 +1,6 @@
 using System.Collections.Concurrent;
 
-namespace MafiaHelper.Services
+namespace MafiaAssist.Services
 {
     public class GameSessionManager
     {
