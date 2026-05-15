@@ -24,12 +24,34 @@ namespace MafiaAssist.Hubs
             return session.Code;
         }
 
-        public async Task Join(string playerName, string code)
+        public async Task Join(string playerId, string playerName, string code)
         {
             var session = _manager.GetSession(code);
             if (session == null)
             {
                 throw new HubException("Session not found");
+            }
+
+            var existingPlayer = session.Players.FirstOrDefault(p => p.Id == playerId);
+            if (existingPlayer != null)
+            {
+                // Reconnect
+                _manager.RemoveConnection(existingPlayer.ConnectionId); // Remove old connection mapping
+                existingPlayer.ConnectionId = Context.ConnectionId;
+                existingPlayer.Name = playerName; // Update name just in case
+                existingPlayer.IsConnected = true;
+                _manager.AddPlayerToSession(Context.ConnectionId, session.Code);
+
+                await Groups.AddToGroupAsync(Context.ConnectionId, "Session_" + session.Code);
+
+                if (!string.IsNullOrEmpty(existingPlayer.Role))
+                {
+                    await Clients.Caller.SendAsync("RoleAssigned", existingPlayer.Role);
+                }
+
+                await Clients.Group("GM_" + session.Code).SendAsync("PlayersUpdated", session.Players);
+                await Clients.Group("GM_" + session.Code).SendAsync("PlayerReconnected", Context.ConnectionId);
+                return;
             }
 
             if (session.Players.Any(p => p.Name.Equals(playerName, StringComparison.OrdinalIgnoreCase)))
@@ -39,9 +61,11 @@ namespace MafiaAssist.Hubs
 
             var player = new Player
             {
+                Id = playerId,
                 ConnectionId = Context.ConnectionId,
                 Name = playerName,
-                Role = null
+                Role = null,
+                IsConnected = true
             };
             session.AddPlayer(player);
             _manager.AddPlayerToSession(Context.ConnectionId, session.Code);
@@ -58,12 +82,15 @@ namespace MafiaAssist.Hubs
             {
                 if (session.GameMasterId == Context.ConnectionId)
                 {
-                    _manager.ScheduleSessionCleanup(session.Code);
+                    await Clients.Group("Session_" + session.Code).SendAsync("GameEnded", "GM disconnected.");
+                    _manager.RemoveSession(session.Code);
                 }
-
-                session.RemovePlayer(Context.ConnectionId);
-                _manager.RemoveConnection(Context.ConnectionId);
-                await Clients.Group("GM_" + session.Code).SendAsync("PlayersUpdated", session.Players);
+                else
+                {
+                    session.MarkPlayerDisconnected(Context.ConnectionId);
+                    _manager.RemoveConnection(Context.ConnectionId);
+                    await Clients.Group("GM_" + session.Code).SendAsync("PlayersUpdated", session.Players);
+                }
             }
             await base.OnDisconnectedAsync(exception);
         }
@@ -165,6 +192,19 @@ namespace MafiaAssist.Hubs
             if (session != null)
             {
                 await Clients.Group("Session_" + session.Code).SendAsync("HideVoting");
+            }
+        }
+
+        public async Task SyncVotingState(string targetConnectionId, string playerNames, string currentVoter, Dictionary<string, int> voteCounts)
+        {
+            var session = _manager.GetSessionByConnectionId(Context.ConnectionId);
+            if (session != null && session.GameMasterId == Context.ConnectionId)
+            {
+                await Clients.Client(targetConnectionId).SendAsync("ShowVoting", playerNames, currentVoter);
+                foreach (var kvp in voteCounts)
+                {
+                    await Clients.Client(targetConnectionId).SendAsync("UpdateVotes", kvp.Key, kvp.Value);
+                }
             }
         }
     }

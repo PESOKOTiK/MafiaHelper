@@ -32,9 +32,13 @@ namespace MafiaAssist.Services
             _players.Add(player);
         }
 
-        public void RemovePlayer(string connId)
+        public void MarkPlayerDisconnected(string connId)
         {
-            _players.RemoveAll(p => p.ConnectionId == connId);
+            var player = _players.FirstOrDefault(p => p.ConnectionId == connId);
+            if (player != null)
+            {
+                player.IsConnected = false;
+            }
         }
 
         public void SetRoleConfigs(List<RoleConfig> configs)

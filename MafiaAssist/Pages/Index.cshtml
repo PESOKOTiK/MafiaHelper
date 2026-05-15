@@ -57,10 +57,39 @@
         let currentPlayerName = "";
         let currentRoomCode = "";
         let currentVoterName = "";
+        
+        let playerId = sessionStorage.getItem('mafiaPlayerId');
+        if (!playerId) {
+            playerId = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2);
+            sessionStorage.setItem('mafiaPlayerId', playerId);
+        }
 
-        conn.start();
+        conn.start().then(async () => {
+            const savedName = sessionStorage.getItem('mafiaPlayerName');
+            const savedCode = sessionStorage.getItem('mafiaRoomCode');
+            if (savedName && savedCode) {
+                document.getElementById('name').value = savedName;
+                document.getElementById('room-code').value = savedCode;
+                try {
+                    await conn.invoke("Join", playerId, savedName, savedCode);
+                    currentPlayerName = savedName;
+                    currentRoomCode = savedCode;
+                    document.getElementById("login-form").classList.add("hidden");
+                    document.getElementById("status").textContent = `✅ Reconnected to room ${savedCode}!`;
+                } catch (err) {
+                    console.log("Could not auto-reconnect:", err);
+                    sessionStorage.removeItem('mafiaRoomCode'); // Clear on failure
+                }
+            }
+        });
 
         // Role assignment
+        conn.on("GameEnded", reason => {
+            alert("Game Ended: " + reason);
+            sessionStorage.removeItem('mafiaRoomCode');
+            location.reload();
+        });
+
         conn.on("RoleAssigned", role => {
           document.getElementById("status").textContent = `👤 ${currentPlayerName} | 🏠 Room: ${currentRoomCode}`;
           const container = document.getElementById("role");
@@ -179,9 +208,11 @@
             if (!code) return alert("Please enter a room code");
 
             try {
-              await conn.invoke("Join", name, code);
+              await conn.invoke("Join", playerId, name, code);
               currentPlayerName = name;
               currentRoomCode = code;
+              sessionStorage.setItem('mafiaPlayerName', name);
+              sessionStorage.setItem('mafiaRoomCode', code);
               document.getElementById("login-form").classList.add("hidden");
               document.getElementById("status").textContent = `✅ Joined room ${code}! Waiting for GM…`;
             } catch (err) {

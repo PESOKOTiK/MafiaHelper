@@ -85,6 +85,7 @@
         let alivePlayers = [];
         let voteCounts = {};
         let voterIndex = 0;
+        let isVotingActive = false;
         let nightRoles = [];
         let nightIndex = 0;
 
@@ -125,13 +126,14 @@
           players.forEach(p => {
             if (dead[p.name] === undefined) dead[p.name] = false;
             const li = document.createElement('li');
-            li.className = dead[p.name]
-              ? 'p-1 flex justify-between opacity-50 line-through'
-              : 'p-1 flex justify-between';
+            let itemClass = 'p-1 flex justify-between items-center';
+            if (dead[p.name]) itemClass += ' opacity-50 line-through';
+            if (p.isConnected === false) itemClass += ' bg-gray-100 dark:bg-gray-600';
+            li.className = itemClass;
 
             const nm = document.createElement('span');
-            nm.textContent = p.name;
-            nm.className = 'font-medium dark:text-gray-100';
+            nm.textContent = p.name + (p.isConnected === false ? " (Offline)" : "");
+            nm.className = p.isConnected === false ? 'font-medium text-gray-500 dark:text-gray-400' : 'font-medium dark:text-gray-100';
 
             const rv = document.createElement('span');
             rv.textContent = p.role || '…waiting…';
@@ -157,8 +159,17 @@
           renderPlayers();
         });
 
+        conn.on('PlayerReconnected', connectionId => {
+          if (isVotingActive && alivePlayers.length > 0 && voterIndex < alivePlayers.length) {
+            const playerNames = alivePlayers.map(p => p.name).join(',');
+            const currentVoter = alivePlayers[voterIndex].name;
+            conn.invoke('SyncVotingState', connectionId, playerNames, currentVoter, voteCounts);
+          }
+        });
+
         // SIMPLE VOTING SYSTEM
         document.getElementById('start-vote').onclick = () => {
+          isVotingActive = true;
           const alive = players.filter(p => !dead[p.name]);
           alivePlayers = shuffleArray(alive);
           voteCounts = {};
@@ -198,6 +209,7 @@
         };
 
         function endVoting() {
+          isVotingActive = false;
           const entries = Object.entries(voteCounts);
           const max = Math.max(...entries.map(e => e[1]));
           const top = entries.filter(e => e[1] === max).map(e => e[0]);
@@ -235,6 +247,7 @@
         });
 
         document.getElementById('start-night').onclick = () => {
+          isVotingActive = false;
           conn.invoke('HideVoting');
         };
 

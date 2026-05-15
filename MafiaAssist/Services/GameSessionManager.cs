@@ -50,13 +50,9 @@ namespace MafiaAssist.Services
             _connectionSessions.TryRemove(connectionId, out _);
         }
 
-        public void ScheduleSessionCleanup(string code)
+        public void RemoveSession(string code)
         {
-            Task.Run(async () =>
-            {
-                await Task.Delay(TimeSpan.FromMinutes(30));
-                _sessions.TryRemove(code, out _);
-            });
+            _sessions.TryRemove(code, out _);
         }
 
         private string GenerateCode()
